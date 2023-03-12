@@ -1,9 +1,7 @@
 import cv2 as cv
 import numpy as np
-import math
-import copy
 import time 
-from queue import PriorityQueue
+import heapq as hq
 #
 clearance = 5
 def linear_equation(i,j,x1,y1,x2,y2,clearance):
@@ -16,46 +14,498 @@ def linear_equation(i,j,x1,y1,x2,y2,clearance):
     else:
         return ((y2 - y1) / (x2 - x1 + clearance)) * (i - x1 - clearance/2) + y1 - j
     
-# def linear_equation(i, j, x1, y1, x2, y2, clearance):
-#     try:
-#         m = (y2 - y1) / (x2 - x1)
-#         b = y1 - m * x1
-#         f = m * i - j + b
-#     except ZeroDivisionError:
-#         f = float('inf')
-#     if f > 0:
-#         f -= clearance
-#     else:
-#         f += clearance
-#     return f
-
-obstracle = (255,0,0)
+obstracle = (0,0,255)
 obstracle_cspace = (255,255,0)
 visited = (255,255,255)
+def generateMap(height, width):
 
-# initialize map
-map = np.zeros((250,600,3))
-
-#create the obstacles
-for i in range(map.shape[1]):
-    for j in range(map.shape[0]):
+    map = np.empty((height, width, 3), dtype='uint8')
+    for i in range(map.shape[1]):
+        for j in range(map.shape[0]):
         #rectangle obstacle1
-        if(i>=100 and i<=150 and j>=0 and j<=100):
-            map[j,i] = obstracle
+            if(i>=100 and i<=150 and j>=0 and j<=100):
+                map[j][i] = obstracle
         #rectangle obstacle 2
-        if(i>=100 and i<=150 and j>=150 and j<=250):
-            map[j,i] = obstracle
+            if(i>=100 and i<=150 and j>=150 and j<=250):
+                map[j][i] = obstracle
         #hexagon obstacle
-        if(linear_equation(i,j,*(300,50),*(364.95,87.5),clearance)<=0 and i<364.95 and linear_equation(i,j,*(364.95,162.5),*(300,200),clearance)>=0
+            if(linear_equation(i,j,*(300,50),*(364.95,87.5),clearance)<=0 and i<364.95 and linear_equation(i,j,*(364.95,162.5),*(300,200),clearance)>=0
            and linear_equation(i,j,*(300,200),*(235.05,162.5),clearance)>=0 and i>235.05 and linear_equation(i,j,*(235.05,87.5),*(300,50),clearance)<=0):
-            map[j,i] = obstracle
+                map[j][i] = obstracle
         #triangle obstacle
-        if (linear_equation(i,j,*(460,25),*(510,125),clearance) <= 0 and linear_equation(i,j,*(460,225),*(510,125),clearance) >= 0 and linear_equation(i,j,*(460,225),*(460,25),clearance) >= 0 and i>460):
-            map[j,i] = obstracle
+            if (linear_equation(i,j,*(460,25),*(510,125),clearance) <= 0 and linear_equation(i,j,*(460,225),*(510,125),clearance) >= 0 and linear_equation(i,j,*(460,225),*(460,25),clearance) >= 0 and i>460):
+                map[j][i] = obstracle
+    return map
+
+def isObstacle(map, x, y):
+ 
+    if (map[x][y][2] < obstracle[2]):
+        return False
+    else:
+        return True
+    
+ 
+# Checking for applicable inputs 
+def checkInputFeasibility(x_start, y_start, x_goal, y_goal, map):
+ 
+    input_flag = True
+
+    if isObstacle(map, y_start, x_start):
+        print("!! Start Position is in an Obstacle/Wall, try again!")
+        input_flag = False
+    if isObstacle(map, y_goal, x_goal):
+        print("!! Goal Position is in an Obstacle/Wall!, try again")
+        input_flag = False
+    
+    return input_flag
+
+
+def isGoalNode(CurrentNode, goalNode):
+
+    if list(CurrentNode) == goalNode:
+        return True
+    else:
+        return False
+
+# Conditions to Move Top
+def actionMoveTop(CurrentNode,map):
+
+    NextNode = CurrentNode.copy()
+    if(NextNode[1]-1 > 0) and (not isObstacle(map, NextNode[1]-1, NextNode[0])):
+        Status = True
+        NextNode[1] = NextNode[1] - 1 
+    else:
+        Status = False   
+
+    return (Status, NextNode)
+
+# Conditions to Move Top Right (Diagonally)
+def actionMoveTopRight(CurrentNode,map):
+
+    NextNode = CurrentNode.copy()
+    
+    if(NextNode[1]-1 > 0) and (NextNode[0]+1 <map.shape[1]) and (not isObstacle(map, NextNode[1]-1, NextNode[0])):
+        Status = True
+        NextNode[0] = NextNode[0] + 1 
+        NextNode[1] = NextNode[1] - 1
+    else:
+        Status = False   
+
+    return (Status, NextNode)
+
+# Conditions to Move Right (Diagonally)
+def actionMoveRight(CurrentNode,map):
+    
+    NextNode = CurrentNode.copy()
+    if(NextNode[0]+1 <map.shape[1]) and (not isObstacle(map, NextNode[1], NextNode[0]+1)):
+        Status = True
+        NextNode[0] = NextNode[0] + 1 
+    else:
+        Status = False   
+
+    return (Status, NextNode)
+
+# Conditions to Move Bottom Right
+def actionMoveBottomRight(CurrentNode,map):
+    
+    NextNode = CurrentNode.copy()
+    if(NextNode[1]+1 < map.shape[0]) and (NextNode[0]+1 <map.shape[1]) and (not isObstacle(map, NextNode[1]+1, NextNode[0]+1)):
+        Status = True
+        NextNode[0] = NextNode[0] + 1 
+        NextNode[1] = NextNode[1] + 1
+    else:
+        Status = False   
+
+    return (Status, NextNode)
+
+# Conditions to Move Bottom
+def actionMoveBottom(CurrentNode,map):
+    
+    NextNode = CurrentNode.copy()
+    if(NextNode[1]+1 < map.shape[0]) and (not isObstacle(map, NextNode[1]+1, NextNode[0])):
+        Status = True 
+        NextNode[1] = NextNode[1] + 1
+    else:
+        Status = False   
+
+    return (Status, NextNode)
+
+# Conditions to Move Bottom Left(Diagonally)
+def actionMoveBottomLeft(CurrentNode,map):
+    
+    NextNode = CurrentNode.copy()
+    if(NextNode[1]+1 < map.shape[0]) and (NextNode[0]-1 >0) and (not isObstacle(map, NextNode[1]+1, NextNode[0]-1)):
+        Status = True 
+        NextNode[0] = NextNode[0] - 1
+        NextNode[1] = NextNode[1] + 1
+    else:
+        Status = False   
+
+    return (Status, NextNode)
+
+# Conditions to Move Left
+def actionMoveLeft(CurrentNode,map):
+    
+    NextNode = CurrentNode.copy()
+    if(NextNode[0]-1 > 0) and (not isObstacle(map, NextNode[1], NextNode[0]-1)):  
+        Status = True 
+        NextNode[0] = NextNode[0] - 1
+    else:
+        Status = False   
+
+    return (Status, NextNode)
+
+# Conditions to Move Top Left (Diagonally)
+def actionMoveTopLeft(CurrentNode,map):
+    
+    NextNode = CurrentNode.copy()
+    if(NextNode[1]-1 > 0) and (NextNode[0]-1 > 0) and (not isObstacle(map, NextNode[1]-1, NextNode[0]-1)):
+        Status = True 
+        NextNode[0] = NextNode[0] - 1
+        NextNode[1] = NextNode[1] - 1
+    else:
+        Status = False   
+
+    return (Status, NextNode)
+
+# Dijkstras Algorithm 
+def findDijkstraPath(startNode, goalNode, map):
+    
+    closed_list = {}    
+    opened_list = []    
+    
+
+    hq.heapify(opened_list)
+    hq.heappush(opened_list, [0, startNode, startNode])
+    
+    start_time = time.time()
+    while True:
+        
+        if (len(opened_list) > 0):
+            
+            explored_node = hq.heappop(opened_list)
+            cost_to_come, present_node, parent_node = explored_node[0], explored_node[1], explored_node[2]
+           
+            closed_list[(present_node[0],present_node[1])] = parent_node
+            
+            if isGoalNode(present_node, goalNode):
+                print("\n Goal reached! ***")
+                end_time = time.time()
+                print("\nTime: "+str(round((end_time-start_time),4)) + " [secs]")
+                backTracking(goalNode,startNode,closed_list,map)
+                return True
+
+            else:
+
+                # Top 
+                flag, child_node = actionMoveTop(present_node,map)    
+                child_node = tuple(child_node)
+
+                if(flag is True and child_node not in closed_list):
+                    if not isGoalNode(child_node, goalNode):     
+                        cost = cost_to_come + 1
+                        child_node = list(child_node)
+                        closelist_flag = False    
+
+                        for node in opened_list:
+                            if(node[1] == child_node):
+                                closelist_flag = True        
+                                if(node[0] > cost):    
+                                    node[0] = cost
+                                    node[2] = present_node
+                                break
+                        
+                        if(not closelist_flag):    
+                            hq.heappush(opened_list,[cost, child_node, present_node])
+                    else:
+                        print("\nGoal Preached!")
+                        end_time = time.time()
+                        print("\nTime: "+str(round((end_time-start_time),4)) + " [secs]")
+                        closed_list[child_node] = present_node
+                        backTracking(goalNode,startNode,closed_list,map)
+                        return True
+
+                
+                # Top Right
+                flag, child_node = actionMoveTopRight(present_node,map)    
+                child_node = tuple(child_node)
+
+                if(flag is True and child_node not in closed_list):
+                    if not isGoalNode(child_node, goalNode):
+                        closelist_flag = False   
+                        cost = cost_to_come + 1.4
+                        child_node = list(child_node)
+
+                        for node in opened_list:
+                            if(node[1] == child_node):
+                                closelist_flag = True
+                                if(node[0] > cost):   
+                                    node[0] = cost
+                                    node[2] = present_node
+                                break
+
+                        if(not closelist_flag):    
+                            hq.heappush(opened_list,[cost, child_node, present_node])
+                    else:
+                        print("\nGoal reached!")
+                        end_time = time.time()
+                        print("\nTime: "+str(round((end_time-start_time),4)) + " [secs]")
+                        closed_list[child_node] = present_node
+                        backTracking(goalNode,startNode,closed_list,map)
+                        return True
+
+                # Right      
+                flag, child_node = actionMoveRight(present_node,map)    
+                child_node = tuple(child_node)
+
+                if(flag is True and child_node not in closed_list):
+                    if not isGoalNode(child_node, goalNode):
+                        closelist_flag = False    
+                        cost = cost_to_come+1
+                        child_node = list(child_node)
+                        
+                        for node in opened_list:
+                            if(node[1] == child_node):
+                                closelist_flag = True
+                                if(node[0] > cost):    
+                                    node[0] = cost
+                                    node[2] = present_node
+                                break
+
+                        if(not closelist_flag):  
+                            hq.heappush(opened_list,[cost, child_node, present_node])
+                    else:
+                        print("\nGoal reached!")
+                        end_time = time.time()
+                        print("\nTime: "+str(round((end_time-start_time),4)) + " [secs]")
+                        closed_list[child_node] = present_node
+                        backTracking(goalNode,startNode,closed_list,map)
+                        return True
+
+                
+                # Bottom Right
+                flag, child_node = actionMoveBottomRight(present_node,map) 
+                child_node = tuple(child_node)
+
+                if(flag is True and child_node not in closed_list):
+                    if not isGoalNode(child_node, goalNode):
+                        closelist_flag = False    
+                        cost = cost_to_come + 1.4
+                        child_node = list(child_node)
+
+                        for node in opened_list:
+                            if(node[1] == child_node):
+                                closelist_flag = True
+                                if(node[0] > cost):  
+                                    node[0] = cost
+                                    node[2] = present_node
+                                break
+
+                        if(not closelist_flag):   
+                            hq.heappush(opened_list,[cost, child_node, present_node])
+                    else:
+                        print("\nGoal reached!")
+                        end_time = time.time()
+                        print("\nTime: "+str(round((end_time-start_time),4)) + " [secs]")
+                        closed_list[child_node] = present_node
+                        backTracking(goalNode,startNode,closed_list,map)
+                        return True
+                
+
+                # Bottom
+                flag,child_node = actionMoveBottom(present_node,map)   
+                child_node = tuple(child_node)
+
+                if(flag is True and child_node not in closed_list):
+                    if not isGoalNode(child_node, goalNode):
+                        closelist_flag = False 
+                        cost = cost_to_come + 1
+                        child_node = list(child_node)
+
+                        for node in opened_list:
+                            if(node[1] == child_node):
+                                closelist_flag = True
+                                if(node[0] > cost):    
+                                    node[0] = cost
+                                    node[2] = present_node
+                                break
+                        if(not closelist_flag):  
+                            hq.heappush(opened_list,[cost, child_node, present_node])
+                    else:
+                        print("\nGoal reached!")
+                        end_time = time.time()
+                        print("\nTime: "+str(round((end_time-start_time),4)) + " [secs]")
+                        closed_list[child_node] = present_node
+                        backTracking(goalNode,startNode,closed_list,map)
+                        return True
+                
+
+                # Bottom Left
+                flag, child_node = actionMoveBottomLeft(present_node,map)  
+                child_node = tuple(child_node)
+
+                if(flag is True and child_node not in closed_list):
+                    if not isGoalNode(child_node, goalNode):
+                        closelist_flag = False  
+                        cost = cost_to_come + 1.4
+                        child_node = list(child_node)
+
+                        for node in opened_list:
+                            if(node[1] == child_node):
+                                closelist_flag = True        
+                                if(node[0] > cost):   
+                                    node[0] = cost
+                                    node[2] = present_node
+                                break
+                        if(not closelist_flag):    
+                            hq.heappush(opened_list,[cost, child_node, present_node])
+                    else:
+                        print("\nGoal reached!")
+                        end_time = time.time()
+                        print("\nTime: "+str(round((end_time-start_time),4)) + " [secs]")
+                        closed_list[child_node] = present_node
+                        backTracking(goalNode,startNode,closed_list,map)
+                        return True
+                
+
+                # Left
+                flag,child_node = actionMoveLeft(present_node,map)  
+                child_node = tuple(child_node)
+
+                if(flag is True and child_node not in closed_list):
+                    if not isGoalNode(child_node, goalNode):
+                        closelist_flag = False 
+                        cost = cost_to_come + 1
+                        child_node = list(child_node)
+
+                        for node in opened_list:
+                            if(node[1] == child_node):
+                                closelist_flag = True
+                                if(node[0] > cost):    
+                                    node[0] = cost
+                                    node[2] = present_node
+                                break
+                        if(not closelist_flag):    
+                            hq.heappush(opened_list,[cost, child_node, present_node])
+                    else:
+                        print("\nGoal reached!")
+                        end_time = time.time()
+                        print("\nTime: "+str(round((end_time-start_time),4)) + " [secs]")
+                        backTracking(goalNode,startNode,closed_list,map)
+                        return True                
+
+
+                # Top Left
+                flag,child_node = actionMoveTopLeft(present_node,map)   
+                child_node = tuple(child_node)
+
+                if(flag is True and child_node not in closed_list):
+                    if not isGoalNode(child_node, goalNode):
+                        closelist_flag = False    
+                        cost = cost_to_come + 1.4
+                        child_node = list(child_node)
+
+                        for node in opened_list:
+                            if(node[1] == child_node):
+                                closelist_flag = True
+                                cost = cost_to_come + 1.4
+                                if(node[0] > cost):  
+                                    node[0] = cost
+                                    node[2] = present_node
+                                break
+
+                        if(not closelist_flag):    
+                            hq.heappush(opened_list,[cost, child_node, present_node])
+                    else:
+                        print("\nGoal reached!")
+                        end_time = time.time()
+                        print("\nTime: "+str(round((end_time-start_time),4)) + " [secs]")
+                        backTracking(goalNode,startNode,closed_list,map)
+                        return True    
+                        
+        else:
+            print("\n No path found between the start and goal explored_nodes") 
+            return False
+
+# Implementing Backtracking to trace the shortest path 
+def backTracking(goalNode, startNode, closed_list, map):
+    video_writer = cv.VideoWriter_fourcc(*'mp4v')
+    out = cv.VideoWriter('project2.mp4',video_writer,1000,(600,250)) # Saving the recorded video
+
+    final_parent = closed_list.get(tuple(goalNode))   
+    cv.line(map, tuple(goalNode), tuple(final_parent), (255,0,0), 1)
+
+    parent_node_keys = closed_list.keys()
+    for key in parent_node_keys:
+        if key is not tuple(startNode):   
+            map[key[1]][key[0]] = [255,255,255]
+            cv.circle(map,tuple(startNode),5,(0,255,0),-1)
+            out.write(map)
+        cv.circle(map,tuple(goalNode),5,(0,255,0),-1)
+        
+        cv.imshow("Path Generation",map)
+        cv.waitKey(1)
+
+    while True:
+        key = closed_list.get(tuple(final_parent))    
+        
+        cv.line(map, tuple(key), tuple(final_parent), (255,0,0), 1)
+        out.write(map)
+
+        final_parent = key
+        
+        if key is startNode:
+            break
+
+    cv.imshow("Path Generation", map)
+    cv.waitKey(0)
+
+
+
+
+# Calling the map generating functions 
+if __name__ == '__main__':
+
+    map = generateMap(250, 600)
+    cv.imshow('map',map)
+    cv.waitKey(0)
+
+#     # initialize map
+#     map = np.zeros((250,600,3))
+
+# #create the obstacles
+#     for i in range(map.shape[1]):
+#         for j in range(map.shape[0]):
+#         #rectangle obstacle1
+#             if(i>=100 and i<=150 and j>=0 and j<=100):
+#                 map[j,i] = obstracle
+#         #rectangle obstacle 2
+#             if(i>=100 and i<=150 and j>=150 and j<=250):
+#                 map[j,i] = obstracle
+#         #hexagon obstacle
+#             if(linear_equation(i,j,*(300,50),*(364.95,87.5),clearance)<=0 and i<364.95 and linear_equation(i,j,*(364.95,162.5),*(300,200),clearance)>=0
+#            and linear_equation(i,j,*(300,200),*(235.05,162.5),clearance)>=0 and i>235.05 and linear_equation(i,j,*(235.05,87.5),*(300,50),clearance)<=0):
+#                 map[j,i] = obstracle
+#         #triangle obstacle
+#             if (linear_equation(i,j,*(460,25),*(510,125),clearance) <= 0 and linear_equation(i,j,*(460,225),*(510,125),clearance) >= 0 and linear_equation(i,j,*(460,225),*(460,25),clearance) >= 0 and i>460):
+#                 map[j,i] = obstracle
             
 # display map with original obstracles            
-map = cv.flip(map,0)
-cv.imshow('map',map) 
-map = cv.flip(map,0)
-cv.waitKey(0)
+    # map = cv.flip(map,0)
+    # cv.imshow('map',map) 
+    # map = cv.flip(map,0)
+    # Start and end point
+    print('Enter the start position...')
+    x_start = int(input("Enter your value of X-Axis: "))
+    y_start = int(input("Enter your value of Y-Axis: "))
+    print('Enter the goal position...')
+    x_goal = int(input("Enter your value of X-Axis: "))
+    y_goal = int(input("Enter your value of Y-Axis: "))
+    if (checkInputFeasibility(x_start, y_start, x_goal, y_goal, map)):
+        startNode = [x_start, y_start]
+        goalNode = [x_goal, y_goal]
+            
+        res = findDijkstraPath(startNode, goalNode, map)
+        cv.destroyAllWindows()
+
 
