@@ -431,8 +431,8 @@ def Dijkstra_algo(startNode, goalNode, map):
 # Implementing back_Tracking_Algo algorithm to trace the shortest path 
 def back_Tracking_Algo(goalNode, startNode, closed_list, map):
     video_writer = cv.VideoWriter_fourcc(*'mp4v')
-    out = cv.VideoWriter('project2.mp4',video_writer,1000,(600,250)) # Saving the recorded video
-
+    out = cv.VideoWriter('project2testcase2.mp4',video_writer,1000,(600,250)) # Saving the recorded video
+    
     final_parent = closed_list.get(tuple(goalNode))   
     cv.line(map, tuple(goalNode), tuple(final_parent), (255,0,0), 1)
 
@@ -464,9 +464,7 @@ def back_Tracking_Algo(goalNode, startNode, closed_list, map):
 # Calling the map generating functions 
 if __name__ == '__main__':
 # display map with original obstracles  
-    map = Map_Generator(250, 600)
-    # cv.imshow('map',map)
-    # cv.waitKey(0)                 
+    map = Map_Generator(250, 600)                 
     print('Enter the start position:')
     x_start = int(input("Enter your value of X-Axis: "))
     y_start = int(input("Enter your value of Y-Axis: "))
