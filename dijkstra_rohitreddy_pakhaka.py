@@ -3,8 +3,10 @@ import numpy as np
 import time 
 import heapq as hq
 #creating the clearance and obstacle colour
-clearance = 5 #clearance 5mm
+clearance = 5 
 obstracle = (0,0,255)
+
+#defining Linear equation for obstacles
 def linear_equation(i,j,x1,y1,x2,y2,clearance):
     if x2 - x1 == 0:
         # handle case where the denominator is zero
@@ -14,7 +16,9 @@ def linear_equation(i,j,x1,y1,x2,y2,clearance):
             return float('inf')
     else:
         return ((y2 - y1) / (x2 - x1 + clearance)) * (i - x1 - clearance/2) + y1 - j
-def generateMap(height, width):
+
+#Generating map
+def Map_Generator(height, width):
 
     map = np.zeros((height, width, 3))
     for i in range(map.shape[1]):
@@ -34,7 +38,7 @@ def generateMap(height, width):
                 map[j][i] = obstracle
     return map
 
-#defining the ob
+#defining the obstacles
 def isObstacle(map, x, y):
  
     if (map[x][y][2] < obstracle[2]):
@@ -56,7 +60,7 @@ def checkInputFeasibility(x_start, y_start, x_goal, y_goal, map):
     
     return input_flag
 
-
+#checking the goal node is reached
 def isGoalNode(CurrentNode, goalNode):
 
     if list(CurrentNode) == goalNode:
@@ -64,7 +68,7 @@ def isGoalNode(CurrentNode, goalNode):
     else:
         return False
 
-# Conditions to Move Top
+# Function to Move Top 
 def actionMoveTop(CurrentNode,map):
 
     NextNode = CurrentNode.copy()
@@ -76,7 +80,7 @@ def actionMoveTop(CurrentNode,map):
 
     return (Status, NextNode)
 
-# Conditions to Move Top Right (Diagonally)
+# Function to Move diagonally top right of cost 1.4
 def actionMoveTopRight(CurrentNode,map):
 
     NextNode = CurrentNode.copy()
@@ -90,7 +94,7 @@ def actionMoveTopRight(CurrentNode,map):
 
     return (Status, NextNode)
 
-# Conditions to Move Right (Diagonally)
+# Function to Move Right diagonally
 def actionMoveRight(CurrentNode,map):
     
     NextNode = CurrentNode.copy()
@@ -102,7 +106,7 @@ def actionMoveRight(CurrentNode,map):
 
     return (Status, NextNode)
 
-# Conditions to Move Bottom Right
+# Function to Move Bottom Right
 def actionMoveBottomRight(CurrentNode,map):
     
     NextNode = CurrentNode.copy()
@@ -115,7 +119,7 @@ def actionMoveBottomRight(CurrentNode,map):
 
     return (Status, NextNode)
 
-# Conditions to Move Bottom
+# Function to Move Bottom
 def actionMoveBottom(CurrentNode,map):
     
     NextNode = CurrentNode.copy()
@@ -127,7 +131,7 @@ def actionMoveBottom(CurrentNode,map):
 
     return (Status, NextNode)
 
-# Conditions to Move Bottom Left(Diagonally)
+# Function to Move Bottom Left(Diagonally)
 def actionMoveBottomLeft(CurrentNode,map):
     
     NextNode = CurrentNode.copy()
@@ -140,7 +144,7 @@ def actionMoveBottomLeft(CurrentNode,map):
 
     return (Status, NextNode)
 
-# Conditions to Move Left
+# Function to Move Left
 def actionMoveLeft(CurrentNode,map):
     
     NextNode = CurrentNode.copy()
@@ -152,7 +156,7 @@ def actionMoveLeft(CurrentNode,map):
 
     return (Status, NextNode)
 
-# Conditions to Move Top Left (Diagonally)
+# Function to Move Top Left (Diagonally)
 def actionMoveTopLeft(CurrentNode,map):
     
     NextNode = CurrentNode.copy()
@@ -165,8 +169,8 @@ def actionMoveTopLeft(CurrentNode,map):
 
     return (Status, NextNode)
 
-# Dijkstras Algorithm 
-def findDijkstraPath(startNode, goalNode, map):
+# Dijkstras Algorithm for finding the path
+def Dijkstra_algo(startNode, goalNode, map):
     
     closed_list = {}    
     opened_list = []    
@@ -186,10 +190,10 @@ def findDijkstraPath(startNode, goalNode, map):
             closed_list[(present_node[0],present_node[1])] = parent_node
             
             if isGoalNode(present_node, goalNode):
-                print("\n Goal reached! ***")
+                print("\n Goal reached!")
                 end_time = time.time()
                 print("\nTime: "+str(round((end_time-start_time),4)) + " [secs]")
-                backTracking(goalNode,startNode,closed_list,map)
+                back_Tracking_Algo(goalNode,startNode,closed_list,map)
                 return True
 
             else:
@@ -215,15 +219,15 @@ def findDijkstraPath(startNode, goalNode, map):
                         if(not closelist_flag):    
                             hq.heappush(opened_list,[cost, child_node, present_node])
                     else:
-                        print("\nGoal Preached!")
+                        print("\nGoal Reached!")
                         end_time = time.time()
                         print("\nTime: "+str(round((end_time-start_time),4)) + " [secs]")
                         closed_list[child_node] = present_node
-                        backTracking(goalNode,startNode,closed_list,map)
+                        back_Tracking_Algo(goalNode,startNode,closed_list,map)
                         return True
 
                 
-                # Top Right
+                # Moving to Top Right according to the current node
                 flag, child_node = actionMoveTopRight(present_node,map)    
                 child_node = tuple(child_node)
 
@@ -248,10 +252,10 @@ def findDijkstraPath(startNode, goalNode, map):
                         end_time = time.time()
                         print("\nTime: "+str(round((end_time-start_time),4)) + " [secs]")
                         closed_list[child_node] = present_node
-                        backTracking(goalNode,startNode,closed_list,map)
+                        back_Tracking_Algo(goalNode,startNode,closed_list,map)
                         return True
 
-                # Right      
+                # Moving to Right according to the present_node      
                 flag, child_node = actionMoveRight(present_node,map)    
                 child_node = tuple(child_node)
 
@@ -276,11 +280,11 @@ def findDijkstraPath(startNode, goalNode, map):
                         end_time = time.time()
                         print("\nTime: "+str(round((end_time-start_time),4)) + " [secs]")
                         closed_list[child_node] = present_node
-                        backTracking(goalNode,startNode,closed_list,map)
+                        back_Tracking_Algo(goalNode,startNode,closed_list,map)
                         return True
 
                 
-                # Bottom Right
+                # Moving to Bottom Right diagonally wrt to present node
                 flag, child_node = actionMoveBottomRight(present_node,map) 
                 child_node = tuple(child_node)
 
@@ -305,11 +309,11 @@ def findDijkstraPath(startNode, goalNode, map):
                         end_time = time.time()
                         print("\nTime: "+str(round((end_time-start_time),4)) + " [secs]")
                         closed_list[child_node] = present_node
-                        backTracking(goalNode,startNode,closed_list,map)
+                        back_Tracking_Algo(goalNode,startNode,closed_list,map)
                         return True
-                
+    
 
-                # Bottom
+                # Moving down wrt present node
                 flag,child_node = actionMoveBottom(present_node,map)   
                 child_node = tuple(child_node)
 
@@ -333,11 +337,11 @@ def findDijkstraPath(startNode, goalNode, map):
                         end_time = time.time()
                         print("\nTime: "+str(round((end_time-start_time),4)) + " [secs]")
                         closed_list[child_node] = present_node
-                        backTracking(goalNode,startNode,closed_list,map)
+                        back_Tracking_Algo(goalNode,startNode,closed_list,map)
                         return True
                 
 
-                # Bottom Left
+                # Moving to Bottom Left wrt to the present node
                 flag, child_node = actionMoveBottomLeft(present_node,map)  
                 child_node = tuple(child_node)
 
@@ -361,11 +365,11 @@ def findDijkstraPath(startNode, goalNode, map):
                         end_time = time.time()
                         print("\nTime: "+str(round((end_time-start_time),4)) + " [secs]")
                         closed_list[child_node] = present_node
-                        backTracking(goalNode,startNode,closed_list,map)
+                        back_Tracking_Algo(goalNode,startNode,closed_list,map)
                         return True
                 
 
-                # Left
+                # Moving to Left wrt to the present node
                 flag,child_node = actionMoveLeft(present_node,map)  
                 child_node = tuple(child_node)
 
@@ -388,11 +392,11 @@ def findDijkstraPath(startNode, goalNode, map):
                         print("\nGoal reached!")
                         end_time = time.time()
                         print("\nTime: "+str(round((end_time-start_time),4)) + " [secs]")
-                        backTracking(goalNode,startNode,closed_list,map)
+                        back_Tracking_Algo(goalNode,startNode,closed_list,map)
                         return True                
 
 
-                # Top Left
+                # Moving to Top Left wrt present node
                 flag,child_node = actionMoveTopLeft(present_node,map)   
                 child_node = tuple(child_node)
 
@@ -417,15 +421,15 @@ def findDijkstraPath(startNode, goalNode, map):
                         print("\nGoal reached!")
                         end_time = time.time()
                         print("\nTime: "+str(round((end_time-start_time),4)) + " [secs]")
-                        backTracking(goalNode,startNode,closed_list,map)
+                        back_Tracking_Algo(goalNode,startNode,closed_list,map)
                         return True    
                         
         else:
             print("\n No path found between the start and goal explored_nodes") 
             return False
 
-# Implementing Backtracking to trace the shortest path 
-def backTracking(goalNode, startNode, closed_list, map):
+# Implementing back_Tracking_Algo algorithm to trace the shortest path 
+def back_Tracking_Algo(goalNode, startNode, closed_list, map):
     video_writer = cv.VideoWriter_fourcc(*'mp4v')
     out = cv.VideoWriter('project2.mp4',video_writer,1000,(600,250)) # Saving the recorded video
 
@@ -460,20 +464,18 @@ def backTracking(goalNode, startNode, closed_list, map):
 # Calling the map generating functions 
 if __name__ == '__main__':
 # display map with original obstracles  
-    map = generateMap(250, 600)
-    cv.imshow('map',map)
-    cv.waitKey(0)                      
-    print('Enter the start position...')
+    map = Map_Generator(250, 600)
+    # cv.imshow('map',map)
+    # cv.waitKey(0)                 
+    print('Enter the start position:')
     x_start = int(input("Enter your value of X-Axis: "))
     y_start = int(input("Enter your value of Y-Axis: "))
-    print('Enter the goal position...')
+    print('Enter the goal position:')
     x_goal = int(input("Enter your value of X-Axis: "))
     y_goal = int(input("Enter your value of Y-Axis: "))
     if (checkInputFeasibility(x_start, y_start, x_goal, y_goal, map)):
         startNode = [x_start, y_start]
         goalNode = [x_goal, y_goal]
             
-        res = findDijkstraPath(startNode, goalNode, map)
+        res = Dijkstra_algo(startNode, goalNode, map)
         cv.destroyAllWindows()
-
-
